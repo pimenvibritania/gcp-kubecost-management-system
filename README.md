@@ -1,17 +1,6 @@
-# [Django Material Kit](https://appseed.us/product/material-kit/django/)
+# Cost Management System
 
-Open-source **Django** project crafted on top of **[Material Kit](https://appseed.us/product/material-kit/django/)**, an open-source design from [Creative-Tim](https://www.creative-tim.com/?AFFILIATE=128200).
-The product is designed to deliver the best possible user experience with highly customizable feature-rich pages. 
 
-- 👉 [Django Material Kit](https://appseed.us/product/material-kit/django/) - `Product page`
-- 👉 [Django Material Kit](https://django-material-kit.appseed-srv1.com/) - `LIVE Demo`
-- 🛒 **[Django Material Kit PRO](https://appseed.us/product/material-kit2-pro/django/)** - `Premium Version`
-
-<br />
-
-> Features: 
-
-- ✅ `Up-to-date Dependencies`
 - ✅ Theme: [Django Theme Material Kit](https://github.com/app-generator/django-theme-material-kit), **designed by [Creative-Tim](https://www.creative-tim.com/product/material-kit?AFFILIATE=128200)**
 - ✅ **Authentication**: `Django.contrib.AUTH`, Registration
 - 🚀 `Deployment` 
@@ -24,15 +13,6 @@ The product is designed to deliver the best possible user experience with highly
 <br />
 
 ## Manual Build 
-
-> 👉 Download the code  
-
-```bash
-$ git clone https://github.com/app-generator/django-material-kit.git
-$ cd django-material-kit
-```
-
-<br />
 
 > 👉 Install modules via `VENV`  
 
@@ -167,20 +147,3 @@ In a similar way, all other files and components can be customized easily.
 At this point, the product should be LIVE.
 
 <br />
-
-## [PRO Version](https://appseed.us/product/material-kit2-pro/django/)   
-
-**Material Kit 2** is a premium design crafted by the `Creative-Tim` agency on top of Bootstrap 5 Framework. Designed for those who like bold elements and beautiful websites, Material Kit 2 is made of hundreds of elements, designed blocks, and fully coded pages built with an impressive level of quality.
-
-- 👉 [Django Material Kit2 PRO](https://appseed.us/product/material-kit2-pro/django/) - product page
-  - ✅ `Enhanced UI` - more pages and components
-  - ✅ `Priority` on support
-
-<br />  
-
-![Mk2 PRO - Premium Seed project by AppSeed.](https://user-images.githubusercontent.com/51070104/168224733-b054bb46-d454-4aea-bb94-2d01bf4760d2.png)
-
-<br />
-
----
-[Django Material Kit](https://appseed.us/product/material-kit/django/) - **Django** Starter provided by **[AppSeed](https://appseed.us/)**
