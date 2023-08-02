@@ -59,18 +59,21 @@ class Service(models.Model):
         return self.name
 
 class Metric(models.Model):
-  service = models.ForeignKey(
-        Service,
-        on_delete=models.PROTECT,
-        blank=False
-    )
+    class Meta:
+        db_table = "metric"
 
-  environment = models.CharField(max_length=12, choices=EnvironmentType.choices())
-  date = models.DateField(blank=False)
-  cpu_usage = models.FloatField()
-  memory_usage = models.FloatField()
-  total_cost = models.FloatField()
+    service = models.ForeignKey(
+            Service,
+            on_delete=models.PROTECT,
+            blank=False
+        )
 
-  created_at = models.DateTimeField(auto_now_add = True, auto_now = False, blank = False)
-  updated_at = models.DateTimeField(auto_now = False, blank = False)
+    environment = models.CharField(max_length=12, choices=EnvironmentType.choices())
+    date = models.DateField(blank=False)
+    cpu_usage = models.FloatField()
+    memory_usage = models.FloatField()
+    total_cost = models.FloatField()
+
+    created_at = models.DateTimeField(auto_now_add = True, auto_now = False, blank = False)
+    updated_at = models.DateTimeField(auto_now = False, blank = False)
   
