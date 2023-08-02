@@ -5,3 +5,4 @@ whitenoise
 django-theme-material-kit==1.0.19
 psycopg2-binary
 mysqlclient
+django_rest_framework
