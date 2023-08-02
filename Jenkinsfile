@@ -78,6 +78,8 @@ pipeline {
                         sh "gcloud auth configure-docker ${garLocation}"
                         sh "cp /home/jenkins/.ssh/id_rsa id_rsa_moladin.pem && cp /home/jenkins/.ssh/id_rsa id_rsa"
                         sh "chmod 400 id_rsa_moladin.pem"
+                        sh "getConsul.py ${consul}/cold ${consulToken} > .env"
+                        sh "getConsul.py ${consul}/hot ${consulToken} >> .env"
                         sh "docker build -t ${garLocation}/${garProject}/${garRepository}/${serviceName}:${shortCommitHash}-${BUILD_NUMBER} ."
                         sh "docker push ${garLocation}/${garProject}/${garRepository}/${serviceName}:${shortCommitHash}-${BUILD_NUMBER}"
                         currentBuild.result = 'SUCCESS'
@@ -102,21 +104,13 @@ pipeline {
                 script {
                     try {
                         sh """
-                            getConsul.py ${consul}/cold ${consulToken} > .env
-                            getConsul.py ${consul}/hot ${consulToken} >> .env
-                            cp /home/jenkins/.ssh/id_rsa id_rsa_moladin.pem
-                            chmod 600 id_rsa_moladin.pem
                             gcloud auth activate-service-account ${emailJenkinsServiceAccount} --key-file=${keyJenkinsServiceAccount}
                             gcloud auth configure-docker ${garLocation}
-                            docker build -t ${garLocation}/${garProject}/${garRepository}/${serviceName}:${versioningCode}-${shortCommitHash}-${BUILD_NUMBER} .
-                            docker push ${garLocation}/${garProject}/${garRepository}/${serviceName}:${versioningCode}-${shortCommitHash}-${BUILD_NUMBER}
-
                             gcloud container clusters get-credentials ${gkeName} --zone ${gkeZone} --project ${projectName}
                             getConsul.py ${consul}/cold ${consulToken} > ${serviceName}-env
                             getConsul.py ${consul}/hot ${consulToken} >> ${serviceName}-env
                             kubectl -n ${deploymentName} delete secret ${deploymentName}-app-secret || true
                             kubectl -n ${deploymentName} create secret generic ${deploymentName}-app-secret --from-env-file=${serviceName}-env
-
                             kubectl -n ${deploymentName} set image deployment/${deploymentName}-app-deployment ${deploymentName}-app=${garLocation}/${garProject}/${garRepository}/${serviceName}:${versioningCode}-${shortCommitHash}-${BUILD_NUMBER}
                             kubectl -n ${deploymentName} rollout restart deployment.apps
                         """
