@@ -22,7 +22,7 @@ pipeline {
         gkeName = "${techFamily}-prod-cluster"
         gkeZone = "asia-southeast2-a"
         projectName = "moladin-${techFamily}-prod"
-        consul = "https://consul.development.mofi.id/v1/kv/${serviceName}/backend"
+        consul = "https://consul.production.mofi.id/v1/kv/${serviceName}/backend"
         consulToken = credentials('consul-dev-token')
         gitCommitMsg = sh (script: 'git log -1 --pretty=%B ${GIT_COMMIT}', returnStdout: true).trim()
         gitAuthor = sh (script: 'git show -s --pretty=%an', returnStdout: true).trim()
@@ -103,17 +103,17 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh """
-                            gcloud auth activate-service-account ${emailJenkinsServiceAccount} --key-file=${keyJenkinsServiceAccount}
-                            gcloud auth configure-docker ${garLocation}
-                            gcloud container clusters get-credentials ${gkeName} --zone ${gkeZone} --project ${projectName}
-                            getConsul.py ${consul}/cold ${consulToken} > ${serviceName}-env
-                            getConsul.py ${consul}/hot ${consulToken} >> ${serviceName}-env
-                            kubectl -n ${deploymentName} delete secret ${deploymentName}-app-secret || true
-                            kubectl -n ${deploymentName} create secret generic ${deploymentName}-app-secret --from-env-file=${serviceName}-env
-                            kubectl -n ${deploymentName} set image deployment/${deploymentName}-app-deployment ${deploymentName}-app=${garLocation}/${garProject}/${garRepository}/${serviceName}:${versioningCode}-${shortCommitHash}-${BUILD_NUMBER}
-                            kubectl -n ${deploymentName} rollout restart deployment.apps
-                        """
+                        sh "gcloud auth activate-service-account ${emailJenkinsServiceAccount} --key-file=${keyJenkinsServiceAccount}"
+                        sh "gcloud auth configure-docker ${garLocation}"
+                        sh "gcloud container clusters get-credentials ${gkeName} --zone ${gkeZone} --project ${projectName}"
+                        sh "getConsul.py ${consul}/cold ${consulToken} > ${serviceName}-env-cold"
+                        sh "getConsul.py ${consul}/hot ${consulToken} > ${serviceName}-env-hot"
+                        sh "kubectl -n ${deploymentName} delete secret ${deploymentName}-cold-app-secret || true"
+                        sh "kubectl -n ${deploymentName} delete secret ${deploymentName}-hot-app-secret || true"
+                        sh "kubectl -n ${deploymentName} create secret generic ${deploymentName}-cold-app-secret --from-env-file=${serviceName}-env-cold"
+                        sh "kubectl -n ${deploymentName} create secret generic ${deploymentName}-hot-app-secret --from-env-file=${serviceName}-env-hot"
+                        sh "kubectl -n ${deploymentName} set image deployment/${deploymentName}-app-deployment ${deploymentName}-app=${garLocation}/${garProject}/${garRepository}/${serviceName}:${versioningCode}-${shortCommitHash}-${BUILD_NUMBER}"
+                        sh "kubectl -n ${deploymentName} rollout restart deployment.apps"
                         currentBuild.result = 'SUCCESS'
                     } catch(e) {
                         currentBuild.result = 'FAILURE'
@@ -123,7 +123,6 @@ pipeline {
                             echo "Deployment ${serviceName} fail"
                         }
                     }
-
                 }
             }
         }
