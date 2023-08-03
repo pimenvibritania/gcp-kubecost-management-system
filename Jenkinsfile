@@ -14,7 +14,7 @@ pipeline {
         servicePort = "8000"
         deploymentName = "${serviceName}"
         emailJenkinsServiceAccount = "infra-prod-sa-id@moladin-infra-prod.iam.gserviceaccount.com"
-        keyJenkinsServiceAccount = credentials('jenkinsServiceAccount')
+        keyJenkinsServiceAccount = credentials('jenkinsServiceAccountInfra')
         garLocation = "asia-southeast2-docker.pkg.dev"
         garProject = "moladin-infra-prod"
         techFamily = "infra"
