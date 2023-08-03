@@ -80,6 +80,7 @@ pipeline {
                         sh "chmod 400 id_rsa_moladin.pem"
                         sh "getConsul.py ${consul}/cold ${consulToken} > .env"
                         sh "getConsul.py ${consul}/hot ${consulToken} >> .env"
+                        sh 'consulMantisCommand.py --get ${consul}/cold ${consulToken} service-account | sed "s/\'/\\"/g" > service-account.json'
                         sh "docker build -t ${garLocation}/${garProject}/${garRepository}/${serviceName}:${shortCommitHash}-${BUILD_NUMBER} ."
                         sh "docker push ${garLocation}/${garProject}/${garRepository}/${serviceName}:${shortCommitHash}-${BUILD_NUMBER}"
                         currentBuild.result = 'SUCCESS'
