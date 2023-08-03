@@ -67,8 +67,52 @@ def get_tf_collection(data, search, date, conversion_rate):
       },
   }
 
-def mapping_services(parent, child):
-  pass
+def mapping_services(gcp_project, service_name, index_weight, current_week_cost, previous_week_cost, project_family, tf, organization):
+
+  environment = parse_env(gcp_project)
+
+  if organization == "ANDROID":
+    weight_index_percent = 100
+    current_cost = current_week_cost 
+    previous_cost = previous_week_cost 
+  else:
+    weight_index_percent = index_weight[organization][tf][environment]
+    current_cost = current_week_cost * (weight_index_percent/100)
+    previous_cost = previous_week_cost * (weight_index_percent/100)
+
+  diff_cost = current_cost - previous_cost
+  status_cost = "UP" if diff_cost > 0 else "DOWN" if diff_cost < 0 else "EQUAL"
+
+  new_svc = {
+    "name" : service_name,
+    "cost_services": [
+      {
+        "environment" : environment,
+        "index_weight" : f"{weight_index_percent} %",
+        "cost_this_week" : current_cost,
+        "cost_prev_week" : previous_cost,
+        "cost_difference" : diff_cost,
+        "cost_status" : status_cost,
+        "gcp_project" : gcp_project
+      }
+    ]
+  }
+
+  found_dict = next((item for item in project_family[tf]["data"]["services"] if item["name"] == new_svc["name"]), None)
+  if found_dict:
+      found_dict["cost_services"].extend(new_svc["cost_services"])
+  else:
+      project_family[tf]["data"]["services"].append(new_svc)
+  
+  if gcp_project not in project_family[tf]["data"]["project_included"]:
+    project_family[tf]["data"]["project_included"].append(gcp_project)
+
+  project_family[tf]["data"]["summary"]["current_week"] += current_cost
+  project_family[tf]["data"]["summary"]["previous_week"] += previous_cost
+  project_family[tf]["data"]["summary"]["cost_difference"] = project_family[tf]["data"]["summary"]["current_week"] - project_family[tf]["data"]["summary"]["previous_week"]
+  project_family[tf]["data"]["summary"]["status"] = "UP" if project_family[tf]["data"]["summary"]["cost_difference"] > 0 else "DOWN" if project_family[tf]["data"]["summary"]["cost_difference"] < 0 else "EQUAL"
+
+  return project_family[tf]
 
 class BigQuery:
 
@@ -182,98 +226,55 @@ class BigQuery:
 
       if project in TF_PROJECT_MDI:
         for tf in project_mdi.keys():
-          environment = parse_env(project)
-          weight_index_percent = index_weight["MDI"][tf][environment]
+          project_mdi[tf] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mdi, tf, "MDI")
 
-          current_cost = current_week_cost * (weight_index_percent/100)
-          previous_cost = previous_week_cost * (weight_index_percent/100)
-          diff_cost = current_cost - previous_cost
-          status_cost = "UP" if diff_cost > 0 else "DOWN" if diff_cost < 0 else "EQUAL"
+          # ============ BACKUP CODE 
+          # environment = parse_env(project)
+          # weight_index_percent = index_weight["MDI"][tf][environment]
 
-          new_svc = {
-            "name" : service,
-            "cost_services": [
-              {
-                "environment" : environment,
-                "index_weight" : f"{weight_index_percent} %",
-                "cost_this_week" : current_cost,
-                "cost_prev_week" : previous_cost,
-                "cost_difference" : diff_cost,
-                "cost_status" : status_cost,
-                "gcp_project" : project
-              }
-            ]
-          }
+          # current_cost = current_week_cost * (weight_index_percent/100)
+          # previous_cost = previous_week_cost * (weight_index_percent/100)
+          # diff_cost = current_cost - previous_cost
+          # status_cost = "UP" if diff_cost > 0 else "DOWN" if diff_cost < 0 else "EQUAL"
 
-          found_dict = next((item for item in project_mdi[tf]["data"]["services"] if item["name"] == new_svc["name"]), None)
-          if found_dict:
-              found_dict["cost_services"].extend(new_svc["cost_services"])
-          else:
-              project_mdi[tf]["data"]["services"].append(new_svc)
+          # new_svc = {
+          #   "name" : service,
+          #   "cost_services": [
+          #     {
+          #       "environment" : environment,
+          #       "index_weight" : f"{weight_index_percent} %",
+          #       "cost_this_week" : current_cost,
+          #       "cost_prev_week" : previous_cost,
+          #       "cost_difference" : diff_cost,
+          #       "cost_status" : status_cost,
+          #       "gcp_project" : project
+          #     }
+          #   ]
+          # }
+
+          # found_dict = next((item for item in project_mdi[tf]["data"]["services"] if item["name"] == new_svc["name"]), None)
+          # if found_dict:
+          #     found_dict["cost_services"].extend(new_svc["cost_services"])
+          # else:
+          #     project_mdi[tf]["data"]["services"].append(new_svc)
           
-          if project not in project_mdi[tf]["data"]["project_included"]:
-            project_mdi[tf]["data"]["project_included"].append(project)
+          # if project not in project_mdi[tf]["data"]["project_included"]:
+          #   project_mdi[tf]["data"]["project_included"].append(project)
 
-          project_mdi[tf]["data"]["summary"]["current_week"] += current_cost
-          project_mdi[tf]["data"]["summary"]["previous_week"] += previous_cost
-          project_mdi[tf]["data"]["summary"]["cost_difference"] = project_mdi[tf]["data"]["summary"]["current_week"] - project_mdi[tf]["data"]["summary"]["previous_week"]
-          project_mdi[tf]["data"]["summary"]["status"] = "UP" if project_mdi[tf]["data"]["summary"]["cost_difference"] > 0 else "DOWN" if project_mdi[tf]["data"]["summary"]["cost_difference"] < 0 else "EQUAL"
+          # project_mdi[tf]["data"]["summary"]["current_week"] += current_cost
+          # project_mdi[tf]["data"]["summary"]["previous_week"] += previous_cost
+          # project_mdi[tf]["data"]["summary"]["cost_difference"] = project_mdi[tf]["data"]["summary"]["current_week"] - project_mdi[tf]["data"]["summary"]["previous_week"]
+          # project_mdi[tf]["data"]["summary"]["status"] = "UP" if project_mdi[tf]["data"]["summary"]["cost_difference"] > 0 else "DOWN" if project_mdi[tf]["data"]["summary"]["cost_difference"] < 0 else "EQUAL"
+          # ============ END OF BACKUP CODE 
 
       elif project in TF_PROJECT_MFI:
         for tf in project_mfi.keys():
-          environment = parse_env(project)
-          weight_index_percent = index_weight["MFI"][tf][environment]
-
-          current_cost = current_week_cost * (weight_index_percent/100)
-          previous_cost = previous_week_cost * (weight_index_percent/100)
-          diff_cost = current_cost - previous_cost
-          status_cost = "UP" if diff_cost > 0 else "DOWN" if diff_cost < 0 else "EQUAL"
-
-          new_svc = {
-            "name" : service,
-            "cost_services": [
-              {
-                "environment" : environment,
-                "index_weight" : f"{weight_index_percent} %",
-                "cost_this_week" : current_cost,
-                "cost_prev_week" : previous_cost,
-                "cost_difference" : diff_cost,
-                "cost_status" : status_cost,
-                "gcp_project" : project
-              }
-            ]
-          }
-
-          found_dict = next((item for item in project_mdi[tf]["data"]["services"] if item["name"] == new_svc["name"]), None)
-          if found_dict:
-              found_dict["cost_services"].extend(new_svc["cost_services"])
-          else:
-              project_mdi[tf]["data"]["services"].append(new_svc)
-          
-          if project not in project_mdi[tf]["data"]["project_included"]:
-            project_mdi[tf]["data"]["project_included"].append(project)
-
-          project_mdi[tf]["data"]["summary"]["current_week"] += current_cost
-          project_mdi[tf]["data"]["summary"]["previous_week"] += previous_cost
-          project_mdi[tf]["data"]["summary"]["cost_difference"] = project_mdi[tf]["data"]["summary"]["current_week"] - project_mdi[tf]["data"]["summary"]["previous_week"]
-          project_mdi[tf]["data"]["summary"]["status"] = "UP" if project_mdi[tf]["data"]["summary"]["cost_difference"] > 0 else "DOWN" if project_mdi[tf]["data"]["summary"]["cost_difference"] < 0 else "EQUAL"
+          project_mfi[tf] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, tf, "MFI")
 
       elif project in TF_PROJECT_ANDROID:
-        pass
+        project_mfi["defi"] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, "defi", "ANDROID")
       else:
         pass
       
-
-
-      # platform_mfi_service["cost_this_week"] = current_week_cost * 0.75
-      # platform_mfi_service["cost_previous_week"] = previous_week_cost * 0.75
-
-    #   if project not in platform_mfi["data"]["project_included"]:
-    #       platform_mfi["data"]["project_included"].append(project)
-
-    #   platform_mfi["data"]["services"].append(result)
-    #   summary_cost["platform_mfi"]["current"] += current_week_cost
-    
-    # platform_mfi["data"]["summary"]["current"] = summary_cost["platform_mfi"]["current"]
-
+    project_mdi.update(project_mfi)
     return project_mdi
