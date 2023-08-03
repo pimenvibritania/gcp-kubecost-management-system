@@ -112,7 +112,7 @@ pipeline {
                         sh "kubectl -n ${deploymentName} delete secret ${deploymentName}-hot-app-secret || true"
                         sh "kubectl -n ${deploymentName} create secret generic ${deploymentName}-cold-app-secret --from-env-file=${serviceName}-env-cold"
                         sh "kubectl -n ${deploymentName} create secret generic ${deploymentName}-hot-app-secret --from-env-file=${serviceName}-env-hot"
-                        sh "kubectl -n ${deploymentName} set image deployment/${deploymentName}-app-deployment ${deploymentName}-app=${garLocation}/${garProject}/${garRepository}/${serviceName}:${versioningCode}-${shortCommitHash}-${BUILD_NUMBER}"
+                        sh "kubectl -n ${deploymentName} set image deployment/${deploymentName}-app-deployment ${deploymentName}-app=${garLocation}/${garProject}/${garRepository}/${serviceName}:${shortCommitHash}-${BUILD_NUMBER}"
                         sh "kubectl -n ${deploymentName} rollout restart deployment.apps"
                         currentBuild.result = 'SUCCESS'
                     } catch(e) {
