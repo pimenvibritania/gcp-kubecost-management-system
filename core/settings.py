@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     'theme_material_kit',
     "home",
     "api",
-    'rest_framework'
+    'rest_framework',
+    'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -165,3 +166,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_REDIRECT_URL = '/'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+CRONJOBS = [
+    ("* * * * *", "home.cron.test_cron_job")
+    ]
