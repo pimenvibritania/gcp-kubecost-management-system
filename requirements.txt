@@ -6,3 +6,9 @@ django-theme-material-kit==1.0.19
 psycopg2-binary
 mysqlclient
 django_rest_framework
+google-cloud-bigquery
+google-cloud-storage
+google-api-python-client 
+google-auth-httplib2 
+google-auth-oauthlib
+marshmallow

@@ -1,8 +1,8 @@
 from enum import Enum
 
 class ProjectType(Enum):
-  MFI = "Moladin Finance Indonesia"
-  MDI = "Moladin Digital Indonesia"
+  MFI = "MFI"
+  MDI = "MDI"
   
   @classmethod
   def choices(cls):

@@ -1,4 +1,4 @@
-from ...models import TechFamily
+from ...models.tech_family import TechFamily
 from django.shortcuts import render
 
 def index(self, *args, **kwargs):
