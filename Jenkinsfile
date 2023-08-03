@@ -22,8 +22,8 @@ pipeline {
         gkeName = "${techFamily}-prod-cluster"
         gkeZone = "asia-southeast2-a"
         projectName = "moladin-${techFamily}-prod"
-        consul = "https://consul.production.mofi.id/v1/kv/${serviceName}/backend"
-        consulToken = credentials('consul-prod-token')
+        consul = "https://consul-gcp.development.jinny.id/v1/kv/${serviceName}/backend"
+        consulToken = credentials('consul-dev-token')
         gitCommitMsg = sh (script: 'git log -1 --pretty=%B ${GIT_COMMIT}', returnStdout: true).trim()
         gitAuthor = sh (script: 'git show -s --pretty=%an', returnStdout: true).trim()
         gitCommitId = sh (script: 'git rev-parse HEAD|cut -c1-7',returnStdout: true).trim()
