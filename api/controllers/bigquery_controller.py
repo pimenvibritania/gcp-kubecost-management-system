@@ -28,7 +28,7 @@ class BigQueryController(APIView):
         data = IndexWeight.get_index_weight(from_date, to_date)
         serializer = IndexWeightSerializer(data, many=True)
         return serializer
-        
+    
 class TodoDetailApiView(APIView):
     # add permission to check if user is authenticated
     permission_classes = [permissions.IsAuthenticated]

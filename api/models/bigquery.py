@@ -8,6 +8,7 @@ from home.models.tech_family import TechFamily
 from home.models.index_weight import IndexWeight
 
 from ..serializers import TFSerializer
+from ..utils.conversion import Conversion
 
 import os
 
@@ -43,7 +44,7 @@ def parse_env(project):
   else:
     return "android"
 
-def get_tf_collection(data, search, date):
+def get_tf_collection(data, search, date, conversion_rate):
   
   find_tf = lambda data_list, slug: next(record for record in data_list if record["slug"] == slug)
   data_tf = find_tf(data, search) 
@@ -54,11 +55,20 @@ def get_tf_collection(data, search, date):
       "pic_email": data_tf["pic_email"],
       "data": {
           "range_date": date,
-          "summary": {"current": 0, "prev": 0},
+          "conversion_rate" : Conversion.idr_format(conversion_rate),
+          "summary": {
+            "current_week": 0, 
+            "previous_week": 0,
+            "cost_difference": 0,
+            "status": ""
+            },
           "project_included": [],
           "services": [],
       },
   }
+
+def mapping_services(parent, child):
+  pass
 
 class BigQuery:
 
@@ -72,10 +82,32 @@ class BigQuery:
     self.client = bigquery.Client(project=GOOGLE_CLOUD_PROJECT, credentials=self.credentials)
 
   @classmethod
-  def get_project(cls):
-    mfi_project, mdi_project = get_tech_family()
+  def get_conversion_rate(cls, input_date):
+    query = f"""
+        SELECT AVG(currency) 
+        FROM 
+            (SELECT currency_conversion_rate AS currency,FORMAT_TIMESTAMP('%Y-%m-%d', _PARTITIONTIME) AS date 
+            FROM `moladin-shared-devl.shared_devl_project.gcp_billing_export_v1_014380_D715C8_03F1FE` 
+            WHERE _PARTITIONTIME = TIMESTAMP('{input_date}') 
+            GROUP BY currency, date)
+        LIMIT 1
+    """
 
+    query_job = cls().client.query(query)
+
+    result = ""
+    for res in query_job.result():
+        result = res
+
+    return result[0]
+
+  @classmethod
+  def get_project(cls):
+    
     input_date = "2023-08-01"
+    
+    conversion_rate = cls.get_conversion_rate(input_date)
+    mfi_project, mdi_project = get_tech_family()
 
     est_date = datetime.strptime(input_date, "%Y-%m-%d")
     current_week = est_date - timedelta(days=6)
@@ -125,12 +157,12 @@ class BigQuery:
     for row in previous_week_results:
         previous_week_costs[(row.svc, row.proj)] = row.total_cost
 
-    platform_mfi = get_tf_collection(mfi_project, "platform_mfi", current_week_str)
-    mofi = get_tf_collection(mfi_project, "mofi", current_week_str)
-    defi = get_tf_collection(mfi_project, "defi", current_week_str)
+    platform_mfi = get_tf_collection(mfi_project, "platform_mfi", current_week_str, conversion_rate)
+    mofi = get_tf_collection(mfi_project, "mofi", current_week_str, conversion_rate)
+    defi = get_tf_collection(mfi_project, "defi", current_week_str, conversion_rate)
 
-    platform_mdi = get_tf_collection(mdi_project, "platform_mdi", current_week_str)
-    dana_tunai = get_tf_collection(mdi_project, "dana_tunai", current_week_str)
+    platform_mdi = get_tf_collection(mdi_project, "platform_mdi", current_week_str, conversion_rate)
+    dana_tunai = get_tf_collection(mdi_project, "dana_tunai", current_week_str, conversion_rate)
 
     project_mfi = {
       "platform_mfi": platform_mfi,
@@ -141,15 +173,6 @@ class BigQuery:
     project_mdi = {
       "dana_tunai" : dana_tunai,
       "platform_mdi" : platform_mdi
-    }
-
-    summary_cost = {
-      "platform_mfi": {
-        "current": 0
-        },
-      "platform_mdi": {
-        "current": 0
-      }
     }
 
     for (service, project) in set(current_week_costs.keys()).union(previous_week_costs.keys()):
@@ -187,9 +210,54 @@ class BigQuery:
               found_dict["cost_services"].extend(new_svc["cost_services"])
           else:
               project_mdi[tf]["data"]["services"].append(new_svc)
-        pass
+          
+          if project not in project_mdi[tf]["data"]["project_included"]:
+            project_mdi[tf]["data"]["project_included"].append(project)
+
+          project_mdi[tf]["data"]["summary"]["current_week"] += current_cost
+          project_mdi[tf]["data"]["summary"]["previous_week"] += previous_cost
+          project_mdi[tf]["data"]["summary"]["cost_difference"] = project_mdi[tf]["data"]["summary"]["current_week"] - project_mdi[tf]["data"]["summary"]["previous_week"]
+          project_mdi[tf]["data"]["summary"]["status"] = "UP" if project_mdi[tf]["data"]["summary"]["cost_difference"] > 0 else "DOWN" if project_mdi[tf]["data"]["summary"]["cost_difference"] < 0 else "EQUAL"
+
       elif project in TF_PROJECT_MFI:
-        pass
+        for tf in project_mfi.keys():
+          environment = parse_env(project)
+          weight_index_percent = index_weight["MFI"][tf][environment]
+
+          current_cost = current_week_cost * (weight_index_percent/100)
+          previous_cost = previous_week_cost * (weight_index_percent/100)
+          diff_cost = current_cost - previous_cost
+          status_cost = "UP" if diff_cost > 0 else "DOWN" if diff_cost < 0 else "EQUAL"
+
+          new_svc = {
+            "name" : service,
+            "cost_services": [
+              {
+                "environment" : environment,
+                "index_weight" : f"{weight_index_percent} %",
+                "cost_this_week" : current_cost,
+                "cost_prev_week" : previous_cost,
+                "cost_difference" : diff_cost,
+                "cost_status" : status_cost,
+                "gcp_project" : project
+              }
+            ]
+          }
+
+          found_dict = next((item for item in project_mdi[tf]["data"]["services"] if item["name"] == new_svc["name"]), None)
+          if found_dict:
+              found_dict["cost_services"].extend(new_svc["cost_services"])
+          else:
+              project_mdi[tf]["data"]["services"].append(new_svc)
+          
+          if project not in project_mdi[tf]["data"]["project_included"]:
+            project_mdi[tf]["data"]["project_included"].append(project)
+
+          project_mdi[tf]["data"]["summary"]["current_week"] += current_cost
+          project_mdi[tf]["data"]["summary"]["previous_week"] += previous_cost
+          project_mdi[tf]["data"]["summary"]["cost_difference"] = project_mdi[tf]["data"]["summary"]["current_week"] - project_mdi[tf]["data"]["summary"]["previous_week"]
+          project_mdi[tf]["data"]["summary"]["status"] = "UP" if project_mdi[tf]["data"]["summary"]["cost_difference"] > 0 else "DOWN" if project_mdi[tf]["data"]["summary"]["cost_difference"] < 0 else "EQUAL"
+
       elif project in TF_PROJECT_ANDROID:
         pass
       else:
