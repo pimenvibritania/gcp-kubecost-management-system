@@ -2,39 +2,33 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import permissions
-from .model import Todo
-from .serializers import TodoSerializer
+from rest_framework.decorators import api_view
 
-class TodoListApiView(APIView):
-    # add permission to check if user is authenticated
+from ..models.bigquery import BigQuery
+from ..serializers import TFSerializer
+from home.models.tech_family import TechFamily
+from home.models.index_weight import IndexWeight
+
+class BigQueryViews(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    # 1. List all
     def get(self, request, *args, **kwargs):
-        '''
-        List all the todo items for given requested user
-        '''
-        todos = Todo.objects.filter(user = request.user.id)
-        serializer = TodoSerializer(todos, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # 2. Create
-    def post(self, request, *args, **kwargs):
-        '''
-        Create the Todo with given todo data
-        '''
-        data = {
-            'task': request.data.get('task'), 
-            'completed': request.data.get('completed'), 
-            'user': request.user.id
-        }
-        serializer = TodoSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        data = BigQuery.get_project()
+        return Response(data, status=status.HTTP_200_OK)
+    
+    @api_view(["GET"])
+    def get_tf(self):
+        # data = TechFamily.objects.all()
+        data = TechFamily.get_tf_mdi()
+        serializer = TFSerializer(data, many=True)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+    
+    def get_index_weight(from_date, to_date):
+        data = IndexWeight.get_index_weight(from_date, to_date)
+        serializer = IndexWeightSerializer(data, many=True)
+        return serializer
+    
 class TodoDetailApiView(APIView):
     # add permission to check if user is authenticated
     permission_classes = [permissions.IsAuthenticated]

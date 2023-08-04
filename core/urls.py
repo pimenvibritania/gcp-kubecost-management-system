@@ -23,5 +23,4 @@ urlpatterns = [
     path("", include('theme_material_kit.urls')),
     path('api-auth/', include('rest_framework.urls')),
     path('api/', include(api_url)),
-
 ]

@@ -2,8 +2,6 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from datetime import datetime, timedelta
 
-from .service import Service, CostService
-
 from home.models.tech_family import TechFamily
 from home.models.index_weight import IndexWeight
 
