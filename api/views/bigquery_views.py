@@ -9,7 +9,7 @@ from ..serializers import TFSerializer, IndexWeightSerializer
 from home.models.tech_family import TechFamily
 from home.models.index_weight import IndexWeight
 
-class BigQueryController(APIView):
+class BigQueryViews(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
