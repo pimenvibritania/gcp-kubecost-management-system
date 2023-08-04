@@ -10,6 +10,7 @@ class IndexWeight(models.Model):
 
     tech_family = models.ForeignKey(
         TechFamily,
+        related_name="index_weight",
         on_delete=models.PROTECT,
         blank=False
     )
@@ -20,7 +21,7 @@ class IndexWeight(models.Model):
     created_at = models.DateTimeField(auto_now_add = True, auto_now = False, blank = False)
 
     def __str__(self):
-        return self.value
+        return self.environment
     
     @classmethod
     def get_index_weight(cls, from_date, to_date):

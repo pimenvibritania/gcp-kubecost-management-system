@@ -12,4 +12,5 @@ urlpatterns = [
     path('<int:todo_id>/', TodoDetailApiView.as_view()),
     path('get-project', BigQueryController.as_view()),
     path('get-tf', BigQueryController.get_tf),
+    path('sync-index', BigQueryController.post_index_weight),
 ]
