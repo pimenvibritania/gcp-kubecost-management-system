@@ -12,10 +12,11 @@ from home.models.index_weight import IndexWeight
 
 class BigQueryViews(APIView):
     permission_classes = [permissions.IsAuthenticated]
-
+    
     def get(self, request, *args, **kwargs):
 
         data = BigQuery.get_project()
+
         return Response(data, status=status.HTTP_200_OK)
     
     @api_view(["GET"])

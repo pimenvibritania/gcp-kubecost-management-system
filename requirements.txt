@@ -14,3 +14,5 @@ google-auth-oauthlib
 marshmallow
 django-crontab==0.7.1
 babel
+httpx
+uvicorn
