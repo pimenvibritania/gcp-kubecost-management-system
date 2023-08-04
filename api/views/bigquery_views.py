@@ -2,7 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import permissions
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes as view_permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 from ..models.bigquery import BigQuery
 from ..serializers import TFSerializer, IndexWeightSerializer
@@ -29,6 +30,7 @@ class BigQueryViews(APIView):
         return serializer
     
     @api_view(["POST"])
+    @view_permission_classes([IsAuthenticated])
     def post_index_weight(request, *args, **kwargs):
 
         data = {
