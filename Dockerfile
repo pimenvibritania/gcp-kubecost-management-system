@@ -15,7 +15,10 @@ COPY . .
 RUN python manage.py migrate
 
 # gunicorn
-CMD ["gunicorn", "--config", "gunicorn-cfg.py", "core.wsgi"]
+# CMD ["gunicorn", "--config", "gunicorn-cfg.py", "core.wsgi"]
 
 #uvicorn
 # CMD ["uvicorn", "--workers", "4", "core.asgi:application"]
+
+#gunicorn&uvicorrn
+CMD ["gunicorn" "--worker-class" "uvicorn.workers.UvicornWorker" "--config" "gunicorn-cfg.py" "core.asgi"]
