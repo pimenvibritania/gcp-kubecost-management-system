@@ -16,3 +16,4 @@ django-crontab==0.7.1
 babel
 httpx
 uvicorn
+kubernetes==26.1.0

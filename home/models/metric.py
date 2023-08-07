@@ -1,13 +1,13 @@
 from django.db import models
 from ..utils.enumerate import EnvironmentType
-from .service import Service
+from .services import Services
 
 class Metric(models.Model):
     class Meta:
-        db_table = "metric"
+        db_table = "metrics"
 
     service = models.ForeignKey(
-            Service,
+            Services,
             on_delete=models.PROTECT,
             blank=False
         )
