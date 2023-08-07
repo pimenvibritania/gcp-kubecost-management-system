@@ -8,10 +8,10 @@ class TechFamily(models.Model):
   
   name = models.CharField(max_length = 100)
   pic = models.CharField(max_length = 100)
-  pic_email = models.EmailField(max_length=25)
-  slug = models.CharField(max_length=25)
+  pic_email = models.EmailField(max_length=100)
+  slug = models.CharField(max_length=100)
   project = models.CharField(
-      max_length=30,
+      max_length=100,
       choices=ProjectType.choices()
     )
   created_at = models.DateTimeField(auto_now_add = True, auto_now = False, blank = False)
