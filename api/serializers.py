@@ -2,7 +2,10 @@ from rest_framework import serializers
 from .model import Todo
 from home.models.tech_family import TechFamily
 from home.models.index_weight import IndexWeight
-
+from home.models.kubecost_clusters import KubecostClusters
+from home.models.services import Services
+from home.models.kubecost_deployments import KubecostDeployments
+from home.models.kubecost_namespaces import KubecostNamespaces, KubecostNamespacesMap
 class TodoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Todo
@@ -22,4 +25,32 @@ class IndexWeightSerializer(serializers.ModelSerializer):
     class Meta:
         model = IndexWeight
         fields = ["value", "environment", "created_at", "tech_family"]
-    
+
+
+class KubecostClusterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KubecostClusters
+        fields = ["cluster_name", "location", "gcp_project", "company_project", "environment", "created_at", "updated_at"]
+
+
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Services
+        fields = ["name", "service_type", "project", "tech_family", "created_at", "updated_at"]
+
+
+class KubecostDeploymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KubecostDeployments
+        fields = ["deployment", "namespace", "service", "date", "project", "environment", "cluster", "cpu_cost", "memory_cost", "pv_cost", "lb_cost", "network_cost", "total_cost" ,"created_at"]
+
+class KubecostNamespaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KubecostNamespaces
+        fields = ["namespace", "service", "date", "project", "environment", "cluster", "cpu_cost", "memory_cost", "pv_cost", "lb_cost", "network_cost", "total_cost" ,"created_at"]
+
+class KubecostNamespaceMapSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KubecostNamespacesMap
+        fields = ["namespace", "service", "project", "created_at", "updated_at"]
+

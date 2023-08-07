@@ -20,6 +20,7 @@ class EnvironmentType(Enum):
 class ServiceType(Enum):
   BE = "backend"
   FE = "frontend"
+  INFRA = "infra"
 
   @classmethod
   def choices(cls):
