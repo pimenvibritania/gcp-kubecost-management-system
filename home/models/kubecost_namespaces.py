@@ -1,7 +1,8 @@
-from django.db import models
+from django.db import models, connection
 from ..utils.enumerate import EnvironmentType, ProjectType
 from .services import Services
 from .kubecost_clusters import KubecostClusters
+import json
 
 class KubecostNamespaces(models.Model):
     class Meta:
@@ -29,6 +30,133 @@ class KubecostNamespaces(models.Model):
   
     def __str__(self):
         return self.namespace
+    
+    @classmethod
+    def get_namespace_report(cls, start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week):
+        query = f"""
+                SELECT
+                    s.tech_family_id,
+                    kn.service_id,
+                    s.name,
+                    kn.environment,
+                    ROUND(SUM(CASE WHEN kn.date BETWEEN '{start_date_this_week}' AND '{end_date_this_week}' THEN kn.total_cost ELSE 0 END), 2) AS cost_this_week,
+                    ROUND(SUM(CASE WHEN kn.date BETWEEN '{start_date_prev_week}' AND '{end_date_prev_week}' THEN kn.total_cost ELSE 0 END), 2) AS cost_prev_week
+                FROM
+                    kubecost_namespaces kn
+                JOIN
+                    services s ON kn.service_id = s.id
+                WHERE
+                    kn.service_id IS NOT NULL
+                GROUP BY
+                    s.tech_family_id,
+                    kn.service_id,
+                    s.name,
+                    kn.environment
+                ORDER BY s.tech_family_id, kn.service_id, kn.environment;
+                """
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            return(rows)
+
+    @classmethod
+    def get_deployments_report(cls, start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week):
+        query = f"""
+                    SELECT
+                        s.tech_family_id,
+                        kn.service_id,
+                        s.name,
+                        kn.environment,
+                        ROUND(SUM(CASE WHEN kn.date BETWEEN '{start_date_this_week}' AND '{end_date_this_week}' THEN kn.total_cost ELSE 0 END), 2) AS cost_this_week,
+                        ROUND(SUM(CASE WHEN kn.date BETWEEN '{start_date_prev_week}' AND '{end_date_prev_week}' THEN kn.total_cost ELSE 0 END), 2) AS cost_prev_week
+                    FROM
+                        kubecost_deployments kn
+                    JOIN
+                        services s ON kn.service_id = s.id
+                    WHERE
+                        kn.service_id IS NOT NULL
+                        AND (kn.namespace = "moladin-crm-mfe" OR kn.namespace = "moladin-b2c-mfe")
+                    GROUP BY
+                        s.tech_family_id,
+                        kn.service_id,
+                        s.name,
+                        kn.environment
+                    ORDER BY s.tech_family_id, kn.service_id, kn.environment;
+                """
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            return(rows)
+
+    @classmethod
+    def get_unregistered_namespace(cls, start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week):
+        query = f"""
+                    SELECT
+                        kn.namespace,
+                        kn.project,
+                        kn.environment,
+                        kc.cluster_name,
+                        ROUND(SUM(CASE WHEN kn.date BETWEEN '{start_date_this_week}' AND '{end_date_this_week}' THEN kn.total_cost ELSE 0 END), 2) AS cost_this_week,
+                        ROUND(SUM(CASE WHEN kn.date BETWEEN '{start_date_prev_week}' AND '{end_date_prev_week}' THEN kn.total_cost ELSE 0 END), 2) AS cost_prev_week
+                    FROM
+                        kubecost_namespaces kn
+                    JOIN
+                    	 kubecost_clusters kc ON kn.cluster_id = kc.id
+                    WHERE
+                        kn.service_id IS NULL
+                        AND kn.namespace != "moladin-crm-mfe" AND kn.namespace != "moladin-b2c-mfe" AND kn.namespace != "__unmounted__"
+                    GROUP BY
+                        kn.namespace,
+                        kn.project,
+                        kn.environment,
+                        kc.cluster_name
+                    ORDER BY
+                        kn.namespace,
+                        kn.project,
+                        kn.environment,
+                        kc.cluster_name;
+                """
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            return(rows)
+
+    @classmethod
+    def get_unregistered_deployment(cls, start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week):
+        query = f"""
+                    SELECT
+                    	 kd.deployment,
+                        kd.project,
+                        kd.environment,
+                        kc.cluster_name,
+                        ROUND(SUM(CASE WHEN kd.date BETWEEN '{start_date_this_week}' AND '{end_date_this_week}' THEN kd.total_cost ELSE 0 END), 2) AS cost_this_week,
+                        ROUND(SUM(CASE WHEN kd.date BETWEEN '{start_date_prev_week}' AND '{end_date_prev_week}' THEN kd.total_cost ELSE 0 END), 2) AS cost_prev_week
+                    FROM
+                        kubecost_deployments kd
+                    JOIN
+                    	kubecost_clusters kc ON kd.cluster_id = kc.id
+                    WHERE
+                        kd.service_id IS NULL
+                        AND (kd.namespace = "moladin-crm-mfe" OR kd.namespace = "moladin-b2c-mfe")
+                        AND kd.deployment is not null
+                        AND kd.deployment != '__unallocated__'
+                    GROUP BY
+                    	kd.deployment,
+                        kd.project,
+                        kd.environment,
+                        kc.cluster_name
+                    ORDER BY
+                    	kd.deployment,
+                        kd.project,
+                        kd.environment,
+                        kc.cluster_name;
+                """
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            return(rows)
+
+
 
 
 class KubecostNamespacesMap(models.Model):
