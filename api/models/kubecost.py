@@ -1,5 +1,6 @@
 from home.models.kubecost_clusters import KubecostClusters
 from home.models.services import Services
+from home.models.tech_family import TechFamily
 from home.models.kubecost_namespaces import KubecostNamespaces, KubecostNamespacesMap
 from ..serializers import KubecostClusterSerializer, ServiceSerializer, KubecostDeployments, KubecostNamespaceSerializer, KubecostNamespaceMapSerializer
 from django.db.utils import IntegrityError
@@ -8,6 +9,7 @@ from kubernetes import config
 from datetime import datetime, timedelta
 import sys, subprocess
 import math
+import json
 
 
 def get_kubecost_cluster():
@@ -24,6 +26,11 @@ def get_namespace_map():
     namespace_map = KubecostNamespacesMap.get_all()
     namespace_map_serialize = KubecostNamespaceMapSerializer(namespace_map, many=True)
     return(namespace_map_serialize.data)
+
+def get_namespace_report(from_date, to_date):
+    namespace_report = KubecostNamespaces.get_namespace_report(from_date, to_date)
+    return
+
 
 class Kubecost:
     @staticmethod
@@ -240,3 +247,164 @@ class Kubecost:
             Kubecost.insert_cost_by_namespace(kube_context, company_project, environment, cluster_id, time_range)
             Kubecost.insert_cost_by_deployment(kube_context, company_project, environment, cluster_id, time_range)
 
+
+class KubecostReport:
+    @staticmethod
+    def round_up(n, decimals=0):
+        multiplier = 10**decimals
+        return math.ceil(n * multiplier) / multiplier
+
+    @staticmethod
+    def report(from_date, to_date):
+        start_date_this_week = from_date
+        end_date_this_week = to_date
+        start_date_obj = datetime.strptime(start_date_this_week, '%Y-%m-%d')
+        end_date_obj = datetime.strptime(end_date_this_week, '%Y-%m-%d')
+        total_days = (end_date_obj - start_date_obj).days + 1
+        start_date_prev_week = (datetime.strptime(start_date_this_week, "%Y-%m-%d") - timedelta(days=total_days)).strftime("%Y-%m-%d")
+        end_date_prev_week = (datetime.strptime(end_date_this_week, "%Y-%m-%d") - timedelta(days=total_days)).strftime("%Y-%m-%d")
+
+    
+        namespace_data = KubecostNamespaces.get_namespace_report(start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week)
+        deployment_data = KubecostNamespaces.get_deployments_report(start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week)
+        registered_service = namespace_data + deployment_data
+        
+        unregistered_namespace = KubecostNamespaces.get_unregistered_namespace(start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week)
+        unregistered_deployment = KubecostNamespaces.get_unregistered_deployment(start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week)
+        unregistered_service = unregistered_namespace + unregistered_deployment
+
+        services_data = {}
+        for tf_id, service_id, service_name, environment, cost_this_week, cost_prev_week in registered_service:
+            if service_id not in services_data:
+                services_data[service_id] = {
+                    'tf_id': tf_id,
+                    'service_name': service_name,
+                    'costs': [
+                        (environment, cost_this_week, cost_prev_week)
+                    ]
+                }
+            else:
+                services_data[service_id]['costs'].append((environment, cost_this_week, cost_prev_week))
+
+        data_by_tf = {}
+        for key, value in services_data.items():
+            tf_id = value['tf_id']
+            # print(f"Key: {key}, tf_id: {tf_id}")
+            if tf_id not in data_by_tf:
+                data_by_tf[tf_id] = {
+                    'services': [
+                        {
+                            'service_id': key,
+                            'service_name': value['service_name'],
+                            'costs': value['costs']
+                        }
+                    ]
+                }
+            else:
+                data_by_tf[tf_id]['services'].append(
+                        {
+                            'service_id': key,
+                            'service_name': value['service_name'],
+                            'costs': value['costs']
+                        }
+                )
+
+
+        final_data = []
+        tech_family = TechFamily.get_tf_project()
+        for tf in tech_family:
+            data = {
+                "tech_family": tf.name,
+                "pic": tf.pic,
+                "pic_email": tf.pic_email,
+                "project": tf.project,
+                "data": {
+                    "date": f"{from_date} - {to_date}",
+                    "services": []
+                }
+            }
+
+            summary_cost_this_week = 0
+            summary_cost_prev_week = 0
+
+            services = data_by_tf[tf.id]['services']
+            for svc in services:
+                service_id = svc['service_id']
+                service_name = svc['service_name']
+                costs = svc['costs']
+                cost_per_env = ""
+                cost_this_week = 0
+                cost_prev_week = 0
+                for cost in costs:
+                    cost_per_env = cost_per_env + f"{cost[0]}(${cost[1]} USD), "
+                    cost_this_week += cost[1]
+                    cost_prev_week += cost[2]
+
+                summary_cost_this_week += cost_this_week
+                summary_cost_prev_week += cost_prev_week
+                summary_cost_status = "UP" if summary_cost_this_week - summary_cost_prev_week > 0 else ("EQUAL" if summary_cost_this_week - summary_cost_prev_week == 0 else "DOWN")
+
+                cost_per_env = cost_per_env[:-2]
+                cost_status = "UP" if cost_this_week - cost_prev_week > 0 else ("EQUAL" if cost_this_week - cost_prev_week == 0 else "DOWN")
+                cost_this_week = f"${str(KubecostReport.round_up(cost_this_week, 2))} USD"
+                cost_prev_week = f"${str(KubecostReport.round_up(cost_prev_week, 2))} USD"
+                
+                data['data']['services'].append({
+                    "service_name": service_name,
+                    "environment": cost_per_env,
+                    "cost_this_week": cost_this_week,
+                    "cost_prev_week": cost_prev_week,
+                    "cost_status": cost_status
+                })
+
+                data['data']['summary'] = {
+                    "cost_this_week": f"${str(KubecostReport.round_up(summary_cost_this_week, 2))} USD",
+                    "cost_prev_week": f"${str(KubecostReport.round_up(summary_cost_prev_week, 2))} USD",
+                    "cost_status": summary_cost_status
+                }
+
+            final_data.append(data)
+          
+
+        # Handling Unregisterd services (namespaces and deployments)
+        service_dict = {}
+        for service_entry in unregistered_service:
+            service_name, project, environment, cluster_name, cost_this_week, cost_prev_week = service_entry
+            # Check if the service_name already exists in the dictionary
+            if service_name in service_dict:
+                service_dict[service_name]['data'].append({
+                    "project": project,
+                    "environment": environment,
+                    "cluster_name": cluster_name,
+                    "cost_this_week": cost_this_week,
+                    "cost_prev_week": cost_prev_week
+                })
+            else:
+                service_dict[service_name] = {
+                    "service_name": service_name,
+                    "data": [{
+                        "project": project,
+                        "environment": environment,
+                        "cluster_name": cluster_name,
+                        "cost_this_week": cost_this_week,
+                        "cost_prev_week": cost_prev_week
+                    }]
+                }
+        # Convert the dictionary values into a list
+        result = list(service_dict.values())
+
+        unregistered_data = {
+            "tech_family": 'UNREGISTERED SERVICES',
+            "data": {
+                "date": f"{from_date} - {to_date}",
+                "services": result
+            }
+        }
+
+        final_data.append(unregistered_data)
+
+
+        # json_data = json.dumps(final_data)
+        # print(json_data)
+
+        return final_data        
