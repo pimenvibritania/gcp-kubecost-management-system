@@ -1,13 +1,13 @@
 from django.urls import path, include
 from .views.bigquery_views import BigQueryViews
 from .views.report_views import test_async
-from .views.kubecost.cluster_views import KubecostClusterViews
+from .views.kubecost_view import KubecostClusterViews
 from .views.service_views import ServiceViews
-from .views.kubecost.namespace_views import KubecostNamespaceViews
-from .views.kubecost.deployments_views import KubecostDeploymentViews
-from .views.kubecost.namespace_map_views import KubecostNamespaceMapViews
-from .views.kubecost.insert_data_views import KubecostInsertDataViews
-from .views.kubecost.report_views import KubecostReportViews
+from .views.kubecost_view import KubecostNamespaceViews
+from .views.kubecost_view import KubecostDeploymentViews
+from .views.kubecost_view import KubecostNamespaceMapViews
+from .views.kubecost_view import KubecostInsertDataViews
+from .views.report_views import KubecostReportViews
 from .views.report_views import send_email
 
 
