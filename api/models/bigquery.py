@@ -1,6 +1,7 @@
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from datetime import datetime, timedelta
+from rest_framework.exceptions import ValidationError
 
 from home.models.tech_family import TechFamily
 from home.models.index_weight import IndexWeight
@@ -46,7 +47,6 @@ def get_tf_collection(data, search, date, conversion_rate):
   
   find_tf = lambda data_list, slug: next(record for record in data_list if record["slug"] == slug)
   data_tf = find_tf(data, search) 
-
   return {
       "tech_family": data_tf["name"],
       "pic": data_tf["pic"],
@@ -144,11 +144,14 @@ class BigQuery:
     return result[0]
 
   @classmethod
-  def get_project(cls):
+  def get_project(cls, input_date):
     
-    input_date = "2023-08-01"
+    # input_date = "2023-08-01"
     
     conversion_rate = cls.get_conversion_rate(input_date)
+    if conversion_rate is None:
+      raise ValidationError(f"There is no data on date: {input_date}")
+    
     mfi_project, mdi_project = get_tech_family()
 
     est_date = datetime.strptime(input_date, "%Y-%m-%d")

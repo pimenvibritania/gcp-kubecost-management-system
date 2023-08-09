@@ -1,28 +1,46 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import permissions
+from rest_framework import status, permissions, serializers
 from rest_framework.decorators import api_view, permission_classes as view_permission_classes
 from rest_framework.permissions import IsAuthenticated
-
+from dateutil.parser import parse
+from rest_framework.exceptions import ValidationError
+from datetime import datetime
 from ..models.bigquery import BigQuery
-from ..serializers import TFSerializer, IndexWeightSerializer
+from ..serializers import TFSerializer, IndexWeightSerializer, BQQueryParamSerializer
 from home.models.tech_family import TechFamily
 from home.models.index_weight import IndexWeight
+
+def validateFormat(value):
+    try:
+        parsed_date = parse(value)
+        if parsed_date.strftime('%Y-%m-%d') != value:
+            raise ValueError("Date format must be 'Y-m-d' (e.g., '2023-08-07')")
+        
+    except ValueError:
+        raise ValidationError("Invalid date format. Must be 'Y-m-d' (e.g., '2023-08-07')")
 
 class BigQueryViews(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request, *args, **kwargs):
-
-        data = BigQuery.get_project()
-
+        date = request.GET.get('date')
+        
+        if not date :
+            return Response({"error": "Date parameter is required."}, status=400)
+        
+        validateFormat(date)
+        
+        data = BigQuery.get_project(date)
+        
         return Response(data, status=status.HTTP_200_OK)
     
     @api_view(["GET"])
     def get_tf(self):
-        data = TechFamily.get_tf_mdi()
-        serializer = TFSerializer(data, many=True)
+        tf_mdi = TechFamily.get_tf_mdi()
+        tf_mfi = TechFamily.get_tf_mfi()
+        
+        serializer = TFSerializer({**tf_mdi, **tf_mfi}, many=True)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
     
     def get_index_weight(from_date, to_date):

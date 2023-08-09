@@ -8,6 +8,8 @@ from .views.kubecost.deployments_views import KubecostDeploymentViews
 from .views.kubecost.namespace_map_views import KubecostNamespaceMapViews
 from .views.kubecost.insert_data_views import KubecostInsertDataViews
 from .views.kubecost.report_views import KubecostReportViews
+from .views.report_views import send_email
+
 
 urlpatterns = [
     path('get-project', BigQueryViews.as_view()),
@@ -21,4 +23,5 @@ urlpatterns = [
     path('kubecost/namespace-map', KubecostNamespaceMapViews.as_view()),
     path('kubecost/insert-data', KubecostInsertDataViews.as_view()),
     path('kubecost/report', KubecostReportViews.as_view()),
+    path('send-email', send_email, name='send_email'),
 ]

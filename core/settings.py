@@ -34,7 +34,12 @@ DEBUG = 'RENDER' not in os.environ
 ALLOWED_HOSTS = ['localhost', '0.0.0.0', '127.0.0.1', 'cost-management.moladin.com']
 
 # Add here your deployment HOSTS
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://localhost:5085', 'http://127.0.0.1:8000/', 'http://0.0.0.0:8000/', 'http://cost-management.moladin.com','https://cost-management.moladin.com', 'https://*.moladin.com', 'http://*.moladin.com']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://localhost:5085', 'http://127.0.0.1:8000/', 'http://0.0.0.0:8000/', 'http://0.0.0.0:5005', 'http://cost-management.moladin.com','https://cost-management.moladin.com', 'https://*.moladin.com', 'http://*.moladin.com']
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    'http://0.0.0.0:5005'
+]
 
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:    

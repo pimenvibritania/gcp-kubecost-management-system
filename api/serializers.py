@@ -11,6 +11,9 @@ class TodoSerializer(serializers.ModelSerializer):
         model = Todo
         fields = ["task", "completed", "timestamp", "updated", "user"]
 
+class BQQueryParamSerializer(serializers.Serializer):
+    date = serializers.DateField
+
 class TFSerializer(serializers.ModelSerializer):
     class Meta:
         model = TechFamily
@@ -26,7 +29,10 @@ class IndexWeightSerializer(serializers.ModelSerializer):
         model = IndexWeight
         fields = ["value", "environment", "created_at", "tech_family"]
 
-
+class MailSerializer(serializers.Serializer):
+    subject = serializers.CharField
+    to_email = serializers.EmailField
+    
 class KubecostClusterSerializer(serializers.ModelSerializer):
     class Meta:
         model = KubecostClusters
