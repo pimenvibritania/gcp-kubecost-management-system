@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta
-
+from dateutil.parser import parse
+from django.http import JsonResponse
+from ..utils.exception import UnprocessableEntityException, BadRequestException
 class Date:
+  def __init__(self):
+    self.status_code = 200
   @classmethod
   def get_date_range(cls, input_date):
     est_date = datetime.strptime(input_date, "%Y-%m-%d")
@@ -19,3 +23,15 @@ class Date:
 
     return current_week_from, current_week_to, previous_week_from, previous_week_to
 
+  @classmethod
+  def validate(cls, value):
+    try:
+        if value is None:
+          return BadRequestException("date query parameter is required")
+        parsed_date = parse(value)
+        if parsed_date.strftime('%Y-%m-%d') != value:
+          return UnprocessableEntityException("Date format must be 'Y-m-d' (e.g., '2023-08-07')")
+        return cls()
+    except ValueError:
+      return UnprocessableEntityException("Invalid date format. Must be 'Y-m-d' (e.g., '2023-08-07')")
+    

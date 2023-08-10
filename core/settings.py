@@ -59,7 +59,13 @@ INSTALLED_APPS = [
     "api",
     'rest_framework',
     'django_crontab',
+    'core'
 ]
+
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'api.utils.exception.custom_exception_handler'
+}
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
