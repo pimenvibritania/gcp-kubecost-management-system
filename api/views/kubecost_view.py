@@ -140,6 +140,8 @@ class KubecostReportViews(APIView):
 
         from_date = request.GET.get('from_date')
         to_date = request.GET.get('to_date')
+        
+        date = request.GET.get('date')
 
         data = KubecostReport.report(from_date, to_date)
 
