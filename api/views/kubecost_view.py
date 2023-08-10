@@ -137,13 +137,9 @@ class KubecostReportViews(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-
-        from_date = request.GET.get('from_date')
-        to_date = request.GET.get('to_date')
         
         date = request.GET.get('date')
-
-        data = KubecostReport.report(from_date, to_date)
+        data = KubecostReport.report(date)
 
         # data = {
         #     "from_date": from_date,

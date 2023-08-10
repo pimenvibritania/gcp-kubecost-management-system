@@ -312,7 +312,7 @@ class KubecostReport:
                 "pic_email": tf.pic_email,
                 "project": tf.project,
                 "data": {
-                    "date": f"{from_date} - {to_date}",
+                    "date": f"{start_date_this_week} - {end_date_this_week}",
                     "services": []
                 }
             }
@@ -390,7 +390,7 @@ class KubecostReport:
         unregistered_data = {
             "tech_family": 'UNREGISTERED SERVICES',
             "data": {
-                "date": f"{from_date} - {to_date}",
+                "date": f"{start_date_this_week} - {end_date_this_week}",
                 "services": result
             }
         }
