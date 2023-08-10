@@ -9,6 +9,15 @@ from .views.kubecost.namespace_map_views import KubecostNamespaceMapViews
 from .views.kubecost.insert_data_views import KubecostInsertDataViews
 from .views.kubecost.report_views import KubecostReportViews
 from .views.bigquery_views import sync_index_weight
+from .views.report_views import test_async
+from .views.kubecost_view import KubecostClusterViews
+from .views.service_views import ServiceViews
+from .views.kubecost_view import KubecostNamespaceViews
+from .views.kubecost_view import KubecostDeploymentViews
+from .views.kubecost_view import KubecostNamespaceMapViews
+from .views.kubecost_view import KubecostInsertDataViews
+from .views.report_views import KubecostReportViews
+from .views.report_views import send_email
 
 urlpatterns = [
     path('get-project', BigQueryViews.as_view()),
