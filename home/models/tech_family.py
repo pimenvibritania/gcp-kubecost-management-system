@@ -27,13 +27,13 @@ class TechFamily(models.Model):
   @classmethod
   def get_tf_mdi(cls):
     return cls.objects.filter(
-      Q(slug = "platform_mdi") | Q(slug = "dana_tunai")
+      Q(slug = "platform_mdi") | Q(slug = "dana_tunai") | Q(slug = "defi_mdi")
     )
   
   @classmethod
   def get_tf_mfi(cls):
     return cls.objects.filter(
-      Q(slug = "platform_mfi") | Q(slug = "mofi") | Q(slug = "defi")
+      Q(slug = "platform_mfi") | Q(slug = "mofi") | Q(slug = "defi_mfi")
     )
 
   @staticmethod

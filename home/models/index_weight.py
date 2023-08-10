@@ -35,7 +35,7 @@ class IndexWeight(models.Model):
                 JOIN (
                     SELECT tech_family_id, environment, MAX(created_at) AS max_created_at
                     FROM index_weight
-                    WHERE created_at BETWEEN "2023-07-01" AND "2023-08-01"
+                    WHERE created_at BETWEEN "{from_date}" AND "{to_date}"
                     GROUP BY tech_family_id, environment
                 ) t2 ON t1.tech_family_id = t2.tech_family_id AND t1.environment = t2.environment AND t1.created_at = t2.max_created_at
                 JOIN tech_family AS tf ON t1.tech_family_id = tf.id

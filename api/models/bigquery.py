@@ -47,7 +47,8 @@ def get_tf_collection(data, search, date, conversion_rate):
   
   find_tf = lambda data_list, slug: next(record for record in data_list if record["slug"] == slug)
   data_tf = find_tf(data, search) 
-  return {
+  
+  collection = {
       "tech_family": data_tf["name"],
       "pic": data_tf["pic"],
       "pic_email": data_tf["pic_email"],
@@ -64,19 +65,18 @@ def get_tf_collection(data, search, date, conversion_rate):
           "services": [],
       },
   }
+  
+  
+  return collection
 
 def mapping_services(gcp_project, service_name, index_weight, current_week_cost, previous_week_cost, project_family, tf, organization):
 
   environment = parse_env(gcp_project)
 
-  if organization == "ANDROID":
-    weight_index_percent = 100
-    current_cost = current_week_cost 
-    previous_cost = previous_week_cost 
-  else:
-    weight_index_percent = index_weight[organization][tf][environment]
-    current_cost = current_week_cost * (weight_index_percent/100)
-    previous_cost = previous_week_cost * (weight_index_percent/100)
+  weight_index_percent = 50 if organization == "ANDROID" else index_weight[organization][tf][environment]
+  
+  current_cost = current_week_cost * (weight_index_percent/100)
+  previous_cost = previous_week_cost * (weight_index_percent/100)
 
   diff_cost = current_cost - previous_cost
   status_cost = "UP" if diff_cost > 0 else "DOWN" if diff_cost < 0 else "EQUAL"
@@ -153,7 +153,7 @@ class BigQuery:
       raise ValidationError(f"There is no data on date: {input_date}")
     
     mfi_project, mdi_project = get_tech_family()
-
+    
     est_date = datetime.strptime(input_date, "%Y-%m-%d")
     current_week = est_date - timedelta(days=6)
     current_week_to = current_week - timedelta(days=1)
@@ -169,9 +169,11 @@ class BigQuery:
     previous_week_to = f_current_week_to
 
     current_week_str = f"{current_week_from} - {current_week_to}"
+    print(current_week_str)
 
     index_weight = IndexWeight.get_index_weight(current_week_from, current_week_to)
-  
+    print(index_weight)
+    
     query_template = """
         SELECT project.id as proj, service.description as svc, SUM(cost) AS total_cost
         FROM `{BIGQUERY_TABLE}`
@@ -204,22 +206,25 @@ class BigQuery:
 
     platform_mfi = get_tf_collection(mfi_project, "platform_mfi", current_week_str, conversion_rate)
     mofi = get_tf_collection(mfi_project, "mofi", current_week_str, conversion_rate)
-    defi = get_tf_collection(mfi_project, "defi", current_week_str, conversion_rate)
-
+    defi_mfi = get_tf_collection(mfi_project, "defi_mfi", current_week_str, conversion_rate)
+    
     platform_mdi = get_tf_collection(mdi_project, "platform_mdi", current_week_str, conversion_rate)
     dana_tunai = get_tf_collection(mdi_project, "dana_tunai", current_week_str, conversion_rate)
-
+    defi_mdi = get_tf_collection(mdi_project, "defi_mdi", current_week_str, conversion_rate)
+    
     project_mfi = {
       "platform_mfi": platform_mfi,
       "mofi" : mofi,
-      "defi" : defi
+      "defi_mfi" : defi_mfi
     }
 
     project_mdi = {
       "dana_tunai" : dana_tunai,
-      "platform_mdi" : platform_mdi
+      "platform_mdi" : platform_mdi,
+      "defi_mdi" : defi_mdi
     }
 
+    
     for (service, project) in set(current_week_costs.keys()).union(previous_week_costs.keys()):
       current_week_cost = current_week_costs.get((service, project), 0)
       previous_week_cost = previous_week_costs.get((service, project), 0)
@@ -273,7 +278,8 @@ class BigQuery:
           project_mfi[tf] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, tf, "MFI")
 
       elif project in TF_PROJECT_ANDROID:
-        project_mfi["defi"] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, "defi", "ANDROID")
+        project_mfi["defi_mfi"] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, "defi_mfi", "ANDROID")
+        project_mdi["defi_mdi"] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mdi, "defi_mdi", "ANDROID")
       else:
         pass
       
