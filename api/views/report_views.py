@@ -2,7 +2,6 @@ from time import perf_counter
 from django.http import HttpResponse 
 from ..models.bigquery import BigQuery
 from django.shortcuts import render
-from ..utils.mailer import send_blast_email
 from ..utils.conversion import Conversion
 from httpx import AsyncClient
 from django.core.mail import send_mail

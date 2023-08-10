@@ -2,13 +2,11 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from datetime import datetime, timedelta
 from rest_framework.exceptions import ValidationError
-
 from home.models.tech_family import TechFamily
 from home.models.index_weight import IndexWeight
-
 from ..serializers import TFSerializer
 from ..utils.conversion import Conversion
-
+from ..utils.date import Date
 import os
 
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -145,28 +143,14 @@ class BigQuery:
 
   @classmethod
   def get_project(cls, input_date):
-    
-    # input_date = "2023-08-01"
-    
+        
     conversion_rate = cls.get_conversion_rate(input_date)
     if conversion_rate is None:
       raise ValidationError(f"There is no data on date: {input_date}")
     
     mfi_project, mdi_project = get_tech_family()
-    
-    est_date = datetime.strptime(input_date, "%Y-%m-%d")
-    current_week = est_date - timedelta(days=6)
-    current_week_to = current_week - timedelta(days=1)
-    previous_week = current_week - timedelta(days=7)
-
-    f_current_week = current_week.strftime("%Y-%m-%d")
-    f_current_week_to = current_week_to.strftime("%Y-%m-%d")
-    f_previous_week = previous_week.strftime("%Y-%m-%d")
-
-    current_week_from = f_current_week
-    current_week_to = input_date
-    previous_week_from = f_previous_week
-    previous_week_to = f_current_week_to
+    print(Date.get_date_range(input_date))
+    current_week_from, current_week_to, previous_week_from, previous_week_to = Date.get_date_range(input_date)
 
     current_week_str = f"{current_week_from} - {current_week_to}"
 
