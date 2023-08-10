@@ -50,6 +50,7 @@ def get_tf_collection(data, search, date, conversion_rate):
   
   collection = {
       "tech_family": data_tf["name"],
+      "project": data_tf["project"],
       "pic": data_tf["pic"],
       "pic_email": data_tf["pic_email"],
       "data": {
@@ -73,7 +74,7 @@ def mapping_services(gcp_project, service_name, index_weight, current_week_cost,
 
   environment = parse_env(gcp_project)
 
-  weight_index_percent = 50 if organization == "ANDROID" else index_weight[organization][tf][environment]
+  weight_index_percent = 100 if organization == "ANDROID" else index_weight[organization][tf][environment]
   
   current_cost = current_week_cost * (weight_index_percent/100)
   previous_cost = previous_week_cost * (weight_index_percent/100)
@@ -278,7 +279,7 @@ class BigQuery:
           project_mfi[tf] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, tf, "MFI")
 
       elif project in TF_PROJECT_ANDROID:
-        project_mfi["defi_mfi"] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, "defi_mfi", "ANDROID")
+        # project_mfi["defi_mfi"] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mfi, "defi_mfi", "ANDROID")
         project_mdi["defi_mdi"] = mapping_services(project, service, index_weight, current_week_cost, previous_week_cost, project_mdi, "defi_mdi", "ANDROID")
       else:
         pass
