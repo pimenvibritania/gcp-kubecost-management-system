@@ -310,7 +310,7 @@ class KubecostReport:
                 )
 
 
-        final_data = []
+        final_data = {}
         tech_family = TechFamily.get_tf_project()
         for tf in tech_family:
             data = {
@@ -363,7 +363,8 @@ class KubecostReport:
                     "cost_status": summary_cost_status
                 }
 
-            final_data.append(data)
+            # final_data.append(data)
+            final_data[tf.slug] = data
           
 
         # Handling Unregisterd services (namespaces and deployments)
@@ -401,7 +402,10 @@ class KubecostReport:
             }
         }
 
-        final_data.append(unregistered_data)
+        # final_data.append(unregistered_data)
+
+        final_data['UNREGISTERED'] = unregistered_data
+
 
 
         # json_data = json.dumps(final_data)
