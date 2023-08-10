@@ -15,16 +15,16 @@ import asyncio
 import os
 
 async def test_async(request):
-    before = perf_counter()
+    # before = perf_counter()
     
     loop = asyncio.get_event_loop()
     
     async_tasks = [
-        loop.run_in_executor(None, BigQuery.get_project, "2023-08-01"),
-        loop.run_in_executor(None, BigQuery.get_project, "2023-08-01"),
+        loop.run_in_executor(None, BigQuery.get_project, "2023-08-10"),
+        loop.run_in_executor(None, BigQuery.get_project, "2023-08-10"),
     ]
 
-    (bigquery_result, results2) = await asyncio.gather(*async_tasks)
+    (bigquery_result, kubecost_result) = await asyncio.gather(*async_tasks)
 
     # for debug purpose
     # print(f"afterr ", perf_counter() - before)
@@ -34,13 +34,13 @@ async def test_async(request):
     
     
     send_report("bigquery", bigquery_result)
-    # send_report("kubecost", bigquery_payload)
+    send_report("kubecost", kubecost_result)
     
     return HttpResponse("TEST HTTP request")
 
 async def send_email_task(subject, to_email, template_path, context):
     email_content = render_to_string(template_path, context)
-    print("email content: ", email_content)
+
     async with AsyncClient() as client:
         response = await client.post(
             os.getenv("MAILGUN_URL"),
@@ -48,6 +48,7 @@ async def send_email_task(subject, to_email, template_path, context):
             data={
                 'from': "pirman.abdurohman@moladin.com",
                 'to': to_email,
+                'cc': "pirman.abdurohman@moladin.com",
                 'subject': subject,
                 'html': email_content
             }
@@ -67,17 +68,19 @@ def send_report(report_type, payload):
             total_gcp_current_total_idr = payload[data]['data']['summary']['current_week']
             total_gcp_prev_total_idr = payload[data]['data']['summary']['previous_week']
             
-            em_email = payload[data]['pic_email']
+            em_name = payload[data]['pic']
             project_name = f"({payload[data]['tech_family']} - {payload[data]['project']})"
             
             rate = payload[data]["data"]["conversion_rate"]
             cost_difference_idr = payload[data]['data']['summary']['cost_difference']
             
+            gcp_percent_status = Conversion.get_percentage(total_gcp_current_total_idr, total_gcp_prev_total_idr)
+            
             gcp_cost_status = ""
             if (total_gcp_current_total_idr > total_gcp_prev_total_idr):
-                gcp_cost_status = """<span style="color:#e74c3c">⬆</span>"""
+                gcp_cost_status = f"""<span style="color:#e74c3c">⬆ {gcp_percent_status:.2f}%</span>"""
             elif (total_gcp_current_total_idr < total_gcp_prev_total_idr):
-                gcp_cost_status = """<span style="color:#1abc9c">⬇</span>"""
+                gcp_cost_status = f"""<span style="color:#1abc9c">⬇ {gcp_percent_status:.2f}%</span>"""
             else:
                 gcp_cost_status = """<strong><span style="font-size:16px">Equal&nbsp;</span></strong>"""
             
@@ -92,7 +95,6 @@ def send_report(report_type, payload):
                             <th>Previous USD</th>
                             <th>GCP Project</th>
                             <th>Environment</th>
-                            <th>Index Weight</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -113,11 +115,13 @@ def send_report(report_type, payload):
                     else:
                         tr_first = "<tr>"
                     
+                    percentage_status = Conversion.get_percentage(cost_svc['cost_this_week'], cost_svc['cost_prev_week'])
+                    
                     cost_status_service = ""
                     if (cost_svc['cost_status'] == 'UP'):
-                        cost_status_service = """<span style="color:#e74c3c">⬆</span>"""
+                        cost_status_service = f"""<span style="color:#e74c3c">⬆ {percentage_status:.2f}%</span>"""
                     elif (cost_svc['cost_status'] == "DOWN"):
-                        cost_status_service = """<span style="color:#1abc9c">⬇</span>"""
+                        cost_status_service = f"""<span style="color:#1abc9c">⬇ {percentage_status:.2f}%</span>"""
                     else:
                         cost_status_service = """Equal"""
                         
@@ -129,34 +133,34 @@ def send_report(report_type, payload):
                             <td>{Conversion.convert_usd(cost_svc['cost_prev_week'], rate)} USD</td>
                             <td>{cost_svc['gcp_project']}</td>
                             <td>{cost_svc['environment']}</td>
-                            <td>{cost_svc['index_weight']}</td>
                             <td>{cost_status_service}</td>
                         </tr>"""
                     
                     table_template += row
+                # break # TODO: delete this
 
             table_template += "</tbody>\n</table>"
-            
-            subject = "subject"
-            to_email = "pimenvibritania@gmail.com"
+            # exit(1) #TODO: delete this
+            subject = "subject" # TODO: change subject
+            # to_email = "pimenvibritania@gmail.com" # TODO: change to em_email
+            to_email = "tjatur.permadi@moladin.com" # TODO: change to em_email
             template_path = 'bigquery_template.html'
             context = {
-                'em_email': em_email,
+                'em_name': em_name,
                 'project_name': project_name,
                 'gcp_cost_status' : gcp_cost_status,
                 'total_gcp_prev_total_idr': Conversion.idr_format(total_gcp_prev_total_idr),
-                'total_gcp_prev_total_usd': Conversion.usd_format(total_gcp_prev_total_idr),
+                'total_gcp_prev_total_usd': Conversion.convert_usd(total_gcp_prev_total_idr, rate),
                 'total_gcp_current_total_idr': Conversion.idr_format(total_gcp_current_total_idr),
-                'total_gcp_current_total_usd': Conversion.usd_format(total_gcp_current_total_idr),
+                'total_gcp_current_total_usd': Conversion.convert_usd(total_gcp_current_total_idr, rate),
                 'current_rate': rate,
                 'cost_difference_idr': Conversion.idr_format(cost_difference_idr),
-                'cost_difference_usd': Conversion.usd_format(cost_difference_idr),
+                'cost_difference_usd': Conversion.convert_usd(cost_difference_idr, rate),
                 'services_gcp': table_template
                 } 
             
             tasks.append(loop.create_task(send_email_task(subject, to_email, template_path, context)))
-            break
-    
+            # break # TODO: delete this
     # tasks = [loop.create_task(send_email_task(subject, body["to_email"], template_path, context)) for _ in range(2)]
     asyncio.gather(*tasks)
 

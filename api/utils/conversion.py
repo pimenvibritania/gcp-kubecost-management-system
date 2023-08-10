@@ -1,9 +1,10 @@
-from babel.numbers import format_currency
+from babel.numbers import format_currency, parse_decimal
 
 class Conversion:
   @classmethod
   def unpack_idr(cls, value):
-    numeric_string = value.replace("Rp", "").replace(".", "").replace(",", "")
+    numeric_string = value.replace("Rp", "")
+    numeric_string = parse_decimal(numeric_string, locale='id_ID')
     return float(numeric_string)
 
   @classmethod
@@ -19,3 +20,10 @@ class Conversion:
     rate = cls.unpack_idr(rate_idr)
     return cls.usd_format(value/rate)
   
+  @classmethod
+  def get_percentage(cls, from_value, to_value):
+    if from_value == 0 or to_value == 0: 
+        return 0
+      
+    return abs(min((from_value - to_value) / abs(to_value) * 100, 100))
+

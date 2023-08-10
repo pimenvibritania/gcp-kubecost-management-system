@@ -112,7 +112,6 @@ def mapping_services(gcp_project, service_name, index_weight, current_week_cost,
   project_family[tf]["data"]["summary"]["status"] = "UP" if project_family[tf]["data"]["summary"]["cost_difference"] > 0 else "DOWN" if project_family[tf]["data"]["summary"]["cost_difference"] < 0 else "EQUAL"
 
   return project_family[tf]
-
 class BigQuery:
 
   def __init__(self):
@@ -170,10 +169,8 @@ class BigQuery:
     previous_week_to = f_current_week_to
 
     current_week_str = f"{current_week_from} - {current_week_to}"
-    print(current_week_str)
 
     index_weight = IndexWeight.get_index_weight(current_week_from, current_week_to)
-    print(index_weight)
     
     query_template = """
         SELECT project.id as proj, service.description as svc, SUM(cost) AS total_cost
