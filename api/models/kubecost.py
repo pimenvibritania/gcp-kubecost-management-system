@@ -4,7 +4,7 @@ from home.models.tech_family import TechFamily
 from home.models.kubecost_namespaces import KubecostNamespaces, KubecostNamespacesMap
 from ..serializers import KubecostClusterSerializer, ServiceSerializer, KubecostDeployments, KubecostNamespaceSerializer, KubecostNamespaceMapSerializer
 from django.db.utils import IntegrityError
-
+from ..utils.date import Date
 from kubernetes import config
 from datetime import datetime, timedelta
 import sys, subprocess
@@ -255,16 +255,9 @@ class KubecostReport:
         return math.ceil(n * multiplier) / multiplier
 
     @staticmethod
-    def report(from_date, to_date):
-        start_date_this_week = from_date
-        end_date_this_week = to_date
-        start_date_obj = datetime.strptime(start_date_this_week, '%Y-%m-%d')
-        end_date_obj = datetime.strptime(end_date_this_week, '%Y-%m-%d')
-        total_days = (end_date_obj - start_date_obj).days + 1
-        start_date_prev_week = (datetime.strptime(start_date_this_week, "%Y-%m-%d") - timedelta(days=total_days)).strftime("%Y-%m-%d")
-        end_date_prev_week = (datetime.strptime(end_date_this_week, "%Y-%m-%d") - timedelta(days=total_days)).strftime("%Y-%m-%d")
-
-    
+    def report(input_date):
+        
+        start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week = Date.get_date_range(input_date)
         namespace_data = KubecostNamespaces.get_namespace_report(start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week)
         deployment_data = KubecostNamespaces.get_deployments_report(start_date_this_week, end_date_this_week, start_date_prev_week, end_date_prev_week)
         registered_service = namespace_data + deployment_data
