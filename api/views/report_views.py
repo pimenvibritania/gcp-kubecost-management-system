@@ -28,7 +28,7 @@ async def create_report(request):
     validated_date = Date.validate(date)
     
     if validated_date.status_code != status.HTTP_200_OK:
-        return JsonResponse({"message": validated_date.message}, status=validated_date.status_code)
+        return JsonResponse( validated_date.message, status=validated_date.status_code)
     
     loop = asyncio.get_event_loop()
     
@@ -204,28 +204,6 @@ def send_report(payload_data):
         """
 
         date_time = kubecost_payload[data]['data']['date']
-        for item in kubecost_payload[data]['data']["services"]:
-            cost_status_service_kubecost = ""
-            if (item["cost_status"].upper() == 'UP'):
-                cost_status_service_kubecost = """<span style="color:#e74c3c">⬆</span>"""
-            elif (item["cost_status"].upper() == "DOWN"):
-                cost_status_service_kubecost = """<span style="color:#1abc9c">⬇</span>"""
-            else:
-                cost_status_service_kubecost = """Equal"""
-            table_template_kubecost += f'''
-                <tr>
-                    <td>{item["service_name"].upper()}</td>
-                    <td>{item["environment"]}</td>
-                    <td>${item["cost_this_week"]} USD</td>
-                    <td>{date_time}</td>
-                    <td>${item["cost_prev_week"]} USD</td>
-                    <td>{cost_status_service_kubecost}</td>
-                </tr>
-            '''
-            
-        table_template_kubecost += '''
-            </tbody></table>
-        '''
         
         previous_total_usd_kubecost = kubecost_payload[data]['data']['summary']['cost_prev_week']
         current_total_usd_kubecost = kubecost_payload[data]['data']['summary']['cost_this_week']
@@ -234,14 +212,42 @@ def send_report(payload_data):
         unpack_current_total_usd_kubecost = Conversion.unpack_usd(current_total_usd_kubecost)
         
         cost_summary_kubecost = unpack_current_total_usd_kubecost - unpack_previous_total_usd_kubecost
+        percent_status_kubecost = Conversion.get_percentage(unpack_current_total_usd_kubecost, unpack_previous_total_usd_kubecost)
         
         cost_status_kubecost = ""
         if (kubecost_payload[data]['data']['summary']['cost_status'] == 'UP'):
-            cost_status_kubecost = f"""<span style="color:#e74c3c">⬆</span>"""
+            cost_status_kubecost = f"""<span style="color:#e74c3c">⬆ {percent_status_kubecost:.2f}%</span>"""
         elif (kubecost_payload[data]['data']['summary']['cost_status'] == "DOWN"):
-            cost_status_kubecost = f"""<span style="color:#1abc9c">⬇</span>"""
+            cost_status_kubecost = f"""<span style="color:#1abc9c">⬇ {percent_status_kubecost:.2f}%</span>"""
         else:
             cost_status_kubecost = """Equal"""
+        
+        for item in kubecost_payload[data]['data']["services"]:
+            unpack_cost_previous_week_kubecost = Conversion.unpack_usd(item["cost_prev_week"])
+            unpack_cost_current_week_kubecost = Conversion.unpack_usd(item["cost_this_week"])
+            percentage_week_kubecost = Conversion.get_percentage(unpack_cost_current_week_kubecost, unpack_cost_previous_week_kubecost)
+            
+            cost_status_service_kubecost = ""
+            if (item["cost_status"].upper() == 'UP'):
+                cost_status_service_kubecost = f"""<span style="color:#e74c3c">⬆ {percentage_week_kubecost}%</span>"""
+            elif (item["cost_status"].upper() == "DOWN"):
+                cost_status_service_kubecost = f"""<span style="color:#1abc9c">⬇ {percentage_week_kubecost}%</span>"""
+            else:
+                cost_status_service_kubecost = """Equal"""
+            
+            table_template_kubecost += f'''
+                <tr>
+                    <td>{item["service_name"].upper()}</td>
+                    <td>{item["environment"]}</td>
+                    <td>{item["cost_this_week"]} USD</td>
+                    <td>{date_time}</td>
+                    <td>{item["cost_prev_week"]} USD</td>
+                    <td>{cost_status_service_kubecost}</td>
+                </tr>
+            '''    
+        table_template_kubecost += '''
+            </tbody></table>
+        '''
         
         context_kubecost = {
             "previous_total_usd_kubecost": previous_total_usd_kubecost,
