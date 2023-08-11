@@ -12,8 +12,7 @@ from home.models.index_weight import IndexWeight
 from itertools import chain
 from django.utils import timezone
 from ..utils.date import Date
-
-import asyncio
+from ..utils.validator import Validator
 
 class BigQueryViews(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -24,7 +23,7 @@ class BigQueryViews(APIView):
         if not date :
             return Response({"error": "Date parameter is required."}, status=400)
         
-        validated_date = Date.validate(date)
+        validated_date = Validator.date(date)
         if validated_date.status_code != status.HTTP_200_OK:
             return JsonResponse({"message": validated_date.message}, status=validated_date.status_code)
         

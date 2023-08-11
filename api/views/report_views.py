@@ -4,7 +4,7 @@ from ..models.bigquery import BigQuery
 from rest_framework import status
 from django.shortcuts import render
 from ..utils.conversion import Conversion
-from ..utils.date import Date
+from ..utils.validator import Validator
 from httpx import AsyncClient
 from django.core.mail import send_mail
 from django.http import JsonResponse
@@ -12,21 +12,22 @@ from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from ..serializers import MailSerializer
 from ..models.kubecost import KubecostReport
-from rest_framework.exceptions import ValidationError
 
 import json
 import asyncio
 import os
 
 KUBECOST_PROJECT = ['moladin', 'infra_mfi', 'infra_mdi']
+MDI_PROJECT = ["dana_tunai", "platform_mdi", "defi_mdi"]
+MFI_PROJECT = ["mofi", "platform_mfi", "defi_mfi"]
 
 async def create_report(request):
-    # before = perf_counter()
+    validated_user = await Validator.async_authenticate(request=request)
+    if validated_user.status_code != status.HTTP_200_OK:
+        return JsonResponse( validated_user.message, status=validated_user.status_code)
     
     date = request.GET.get('date')
-
-    validated_date = Date.validate(date)
-    
+    validated_date = Validator.date(date)
     if validated_date.status_code != status.HTTP_200_OK:
         return JsonResponse( validated_date.message, status=validated_date.status_code)
     
@@ -57,6 +58,85 @@ async def create_report(request):
         "message": "Report email sent!"
         }, status=200)
 
+def get_idle_cost(idle_data, search_data, index_weight):
+    
+    search_for_project = "MDI" if search_data in MDI_PROJECT else "MFI" if search_data in MFI_PROJECT else "UNKNOWN"
+    
+    if search_for_project == "UNKNOWN":
+        return False
+    
+    table_template_idle_cost = """
+            <table>
+            <thead>
+                <tr>
+                    <th>Cluster Name</th>
+                    <th>Project</th>
+                    <th>Environment</th>
+                    <th>Cost This Week</th>
+                    <th>Cost Previous Week</th>
+                    <th>Status Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    total_current_idle_cost = 0
+    total_previous_idle_cost = 0
+    
+    for item in idle_data:
+        project = item['project']
+        
+        if search_for_project == project:
+            cluster_name = item["cluster_name"]
+            environment = item['environment']
+            iw = index_weight[search_for_project][search_data][environment]
+            cost_this_week = item["cost_this_week"] * (iw/100)
+            cost_prev_week = item["cost_prev_week"] * (iw/100)
+            total_current_idle_cost += cost_this_week
+            total_previous_idle_cost += cost_prev_week
+            percentage_week_idle = Conversion.get_percentage(cost_this_week, cost_prev_week)
+            
+            cost_status_idle = ""
+            if (item["cost_this_week"] > item["cost_prev_week"]):
+                cost_status_idle = f"""<span style="color:#e74c3c">⬆ {percentage_week_idle}%</span>"""
+            elif (item["cost_this_week"] < item["cost_prev_week"]):
+                cost_status_idle = f"""<span style="color:#1abc9c">⬇ {percentage_week_idle}%</span>"""
+            else:
+                cost_status_idle = """Equal"""
+            
+            table_template_idle_cost += f'''
+                <tr>
+                    <td>{cluster_name}</td>
+                    <td>{project}</td>
+                    <td>{environment}</td>
+                    <td>{Conversion.usd_format(cost_this_week)} USD</td>
+                    <td>{Conversion.usd_format(cost_prev_week)} USD</td>
+                    <td>{cost_status_idle}</td>
+                </tr>
+            '''    
+        else:
+            continue
+    
+    table_template_idle_cost += '''
+        </tbody></table>
+    '''
+    
+    total_percentage_week_idle = Conversion.get_percentage(total_current_idle_cost, total_previous_idle_cost)
+    
+    cost_total_status_idle = ""
+    if (total_current_idle_cost > total_previous_idle_cost):
+        cost_total_status_idle = f"""<span style="color:#e74c3c">⬆ {total_percentage_week_idle:.2f}%</span>"""
+    elif (total_current_idle_cost < total_previous_idle_cost):
+        cost_total_status_idle = f"""<span style="color:#1abc9c">⬇ {total_percentage_week_idle:.2f}%</span>"""
+    else:
+        cost_total_status_idle = """Equal"""
+    
+    return {
+        "table_idle_cost": table_template_idle_cost,
+        "total_current_idle_cost": Conversion.usd_format(total_current_idle_cost),
+        "total_previous_idle_cost": Conversion.usd_format(total_previous_idle_cost),
+        "cost_total_status_idle": cost_total_status_idle
+    }
+
 async def send_email_task(subject, to_email, template_path, context):
     email_content = render_to_string(template_path, context)
 
@@ -83,15 +163,22 @@ def send_report(payload_data):
     
     bigquery_payload = payload_data["bigquery"]
     kubecost_payload = payload_data["kubecost"]
-    # base_context = []
+    
+    extract_idle_data = next((service for service in kubecost_payload["UNREGISTERED"]["data"]["services"] if service["service_name"] == "__idle__"), None)
+    
     for data in kubecost_payload:
         if data == "UNREGISTERED":
             continue
         
         context = {}
+        
+        idle_cost_data = get_idle_cost(extract_idle_data['data'], data, bigquery_payload['__extras__']['index_weight']) #idle cost
+        if idle_cost_data:
+            context.update(idle_cost_data) 
+        
         subject = "GCP Cost Tracking Services - Important update"
-        # to_email = "pimenvibritania@gmail.com" # TODO: change to em_email
-        to_email = "tjatur.permadi@moladin.com" # TODO: change to em_email
+        to_email = "pimenvibritania@gmail.com" # TODO: change to em_email
+        # to_email = "tjatur.permadi@moladin.com" # TODO: change to em_email
         template_path = 'email_template.html'
         em_name = kubecost_payload[data]['pic']
         project_name = f"({kubecost_payload[data]['tech_family']} - {kubecost_payload[data]['project']})"
@@ -121,12 +208,12 @@ def send_report(payload_data):
                     <thead>
                         <tr>
                             <th>Service</th>
+                            <th>GCP Project</th>
+                            <th>Environment</th>
                             <th>Current IDR</th>
                             <th>Current USD</th>
                             <th>Previous IDR</th>
                             <th>Previous USD</th>
-                            <th>GCP Project</th>
-                            <th>Environment</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -159,12 +246,12 @@ def send_report(payload_data):
                         
                     row = f"""
                         {tr_first}
+                            <td>{cost_svc['gcp_project']}</td>
+                            <td>{cost_svc['environment']}</td>
                             <td>{Conversion.idr_format(cost_svc['cost_this_week'])}</td>
                             <td>{Conversion.convert_usd(cost_svc['cost_this_week'], rate_gcp)} USD</td>
                             <td>{Conversion.idr_format(cost_svc['cost_prev_week'])}</td>
                             <td>{Conversion.convert_usd(cost_svc['cost_prev_week'], rate_gcp)} USD</td>
-                            <td>{cost_svc['gcp_project']}</td>
-                            <td>{cost_svc['environment']}</td>
                             <td>{cost_status_service_gcp}</td>
                         </tr>"""
                     
@@ -259,7 +346,6 @@ def send_report(payload_data):
         
         context.update(context_kubecost)
         
-        # base_context.append(context)
         tasks.append(loop.create_task(send_email_task(subject, to_email, template_path, context)))
         # break
     asyncio.gather(*tasks)
